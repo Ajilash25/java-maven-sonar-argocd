@@ -71,6 +71,7 @@ pipeline {
                     )
                 ]) {
                     sh '''
+                        git config --global --add safe.directory "${WORKSPACE}"
                         git config --global user.email "ajilashedward25@gmail.com"
                         git config --global user.name "Ajilash25"
                         sed -i "s|image: ajilash25/spring-boot-app:.*|image: ajilash25/spring-boot-app:${BUILD_NUMBER}|g" spring-boot-app-manifests/deployment.yml
