@@ -1,119 +1,86 @@
 pipeline {
+agent {
+docker {
+image 'jibin321/maven-docker-agent\:v2'
+args '--user root -v /var/run/docker.sock:/var/run/docker.sock' // mount Docker socket to access the host's Docker daemon
+}
+}
+stages {
+stage('Checkout') {
+steps {
+sh 'echo passed'
+//git branch: 'main', url: 'https\://github.com/user/repo.git'
+}
+}
 
-    agent {
-        docker {
-            image 'jibin321/maven-docker-agent:v2'
-            args '--user root -v /var/run/docker.sock:/var/run/docker.sock'
-        }
+```
+stage('Build and Test') {
+steps {
+    dir('spring-boot-app') {
+        sh 'ls -la'
+        sh 'mvn clean package'
     }
+}
+```
 
-    stages {
+}
+stage('SonarQube Analysis') {
+steps {
+dir('spring-boot-app') {
+withSonarQubeEnv('sonarqube') {
+sh 'mvn org.sonarsource.scanner.maven\:sonar-maven-plugin\:sonar -Dsonar.projectKey=my-ec2-project'
+}
+}
+}
+}
+stage('Build and Push Docker Image') {
+environment {
+DOCKER\_IMAGE = "ajilash25/spring-boot-app:${BUILD\_NUMBER}"
+REGISTRY\_CREDENTIALS = credentials('docker-cred')
+}
 
-        stage('Checkout') {
-            steps {
-                checkout scm
+```
+steps {
+    dir('spring-boot-app') {
+        sh 'docker build -t $DOCKER_IMAGE .'
 
-                sh '''
-                    echo "===== Workspace ====="
-                    pwd
+        sh 'echo $REGISTRY_CREDENTIALS_PSW | docker login -u $REGISTRY_CREDENTIALS_USR --password-stdin'
 
-                    echo "===== Files ====="
-                    ls -la
+        sh 'docker push $DOCKER_IMAGE'
+    }
+}
+```
 
-                    echo "===== Git Status ====="
-                    git status
-                '''
-            }
-        }
+}
 
-        stage('Build and Test') {
-            steps {
-                sh '''
-                    echo "===== Building Maven Project ====="
-                    mvn clean package
-                '''
-            }
-        }
+stage('Update Deployment File') {
+steps {
+script {
+withCredentials([string(credentialsId: 'github-token', variable: 'GITHUB\_TOKEN')]) {
+sh '''
+cd "$WORKSPACE"
 
-        stage('SonarQube Analysis') {
-            steps {
-                withSonarQubeEnv('sonarqube') {
-                    sh '''
-                        mvn org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
-                        -Dsonar.projectKey=my-ec2-project
-                    '''
-                }
-            }
-        }
+```
+                git config user.email "ajilashedward25@gmail.com"
+                git config user.name "Ajilash25"
 
-        stage('Build and Push Docker Image') {
+                git status
 
-            environment {
-                DOCKER_IMAGE = "ajilash25/spring-boot-app:${BUILD_NUMBER}"
-                REGISTRY_CREDENTIALS = credentials('docker-cred')
-            }
+                # Update your deployment YAML here
+                # sed -i "s|image:.*|image: ajilash25/spring-boot-app:${BUILD_NUMBER}|" spring-boot-app-manifests/deployment.yml
 
-            steps {
+                git add spring-boot-app-manifests/deployment.yml
+                git commit -m "Update Docker image to ${BUILD_NUMBER}" || true
 
-                sh '''
-                    echo "===== Building Docker Image ====="
-
-                    docker build -t "$DOCKER_IMAGE" .
-
-                    echo "===== Logging into Docker Hub ====="
-
-                    echo "$REGISTRY_CREDENTIALS_PSW" | \
-                    docker login \
-                    -u "$REGISTRY_CREDENTIALS_USR" \
-                    --password-stdin
-
-                    echo "===== Pushing Docker Image ====="
-
-                    docker push "$DOCKER_IMAGE"
-                '''
-            }
-        }
-
-        stage('Update Deployment File') {
-
-            steps {
-
-                withCredentials([
-                    string(
-                        credentialsId: 'github-token',
-                        variable: 'GITHUB_TOKEN'
-                    )
-                ]) {
-
-                    sh '''
-                        echo "===== Git Configuration ====="
-
-                        git config user.email "ajilasheward25@gmail.com"
-                        git config user.name "Ajilash25"
-
-                        echo "===== Git Status ====="
-                        git status
-
-                        echo "===== Updating deployment.yaml ====="
-
-                        sed -i "s|image:.*|image: ajilash25/spring-boot-app:${BUILD_NUMBER}|" \
-                        spring-boot-app-manifests/deployment.yml
-
-                        echo "===== Deployment File ====="
-                        cat spring-boot-app-manifests/deployment.yml
-
-                        echo "===== Committing Changes ====="
-
-                        git add spring-boot-app-manifests/deployment.yml
-
-                        git commit -m "Update Docker image to ${BUILD_NUMBER}" || true
-
-                        echo "===== Pushing Changes ====="
-
-                        git push https://${GITHUB_TOKEN}@github.com/ajilash25/java-maven-sonar-argocd.git HEAD:main
-                    '''
-                }
-            }
+                git push https://${GITHUB_TOKEN}@github.com/ajilash25/java-maven-sonar-argocd.git HEAD:main
+            '''
         }
     }
 }
+```
+
+}
+}
+}
+
+this is my jenkinsfile
