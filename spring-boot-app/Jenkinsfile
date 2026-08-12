@@ -2,7 +2,7 @@ pipeline {
 agent {
 docker {
 image 'jibin321/maven-docker-agent\:v2'
-args '--user root -v /var/run/docker.sock:/var/run/docker.sock' // mount Docker socket to access the host's Docker daemon
+args '--user root -v /var/run/docker.sock:/var/run/docker.sock' 
 }
 }
 stage('Checkout') {
@@ -44,7 +44,6 @@ steps {
         sh 'docker push $DOCKER_IMAGE'
     }
 }
-```
 
 }
 
@@ -72,10 +71,6 @@ cd "$WORKSPACE"
         }
     }
 }
-```
 
 }
 }
-}
-
-this is my jenkinsfile
