@@ -71,7 +71,7 @@ pipeline {
                     )
                 ]) {
                     sh '''
-                        git config --global --add safe.directory /var/lib/jenkins/workspace/jenkins-maven-sonar-pipeline
+                        git config --global --add safe.directory /var/lib/jenkins/workspace/jenkins-maven-pipeline
                         
                         git config user.email "ajilashedwrad25@gmail.com"
                         git config user.name "${GIT_USER_NAME}"
