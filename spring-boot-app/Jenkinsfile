@@ -23,10 +23,8 @@ steps {
 }
 stage('SonarQube Analysis') {
 steps {
-dir('spring-boot-app') {
 withSonarQubeEnv('sonarqube') {
 sh 'mvn org.sonarsource.scanner.maven\:sonar-maven-plugin\:sonar -Dsonar.projectKey=my-ec2-project'
-}
 }
 }
 }
